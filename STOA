@@ -1,0 +1,42 @@
+✅ 1. Create Trade Nodes (Sample Data)
+This creates a few FX trades with attributes like trade_id, currency_pair, price, volume, and timestamp.
+
+CREATE (t1:Trade {trade_id: "T001", currency_pair: "EUR/USD", price: 1.1025, volume: 500000, timestamp: datetime("2024-02-20T10:30:00")})
+CREATE (t2:Trade {trade_id: "T002", currency_pair: "EUR/USD", price: 1.1040, volume: 750000, timestamp: datetime("2024-02-20T10:35:00")})
+CREATE (t3:Trade {trade_id: "T003", currency_pair: "GBP/USD", price: 1.3055, volume: 1000000, timestamp: datetime("2024-02-20T10:40:00")})
+CREATE (t4:Trade {trade_id: "T004", currency_pair: "GBP/USD", price: 1.3070, volume: 1200000, timestamp: datetime("2024-02-20T10:45:00")})
+CREATE (t5:Trade {trade_id: "T005", currency_pair: "EUR/USD", price: 1.1035, volume: 800000, timestamp: datetime("2024-02-20T10:50:00")});
+✅ 2. Create Relationships Between Trades
+This links trades that happen in sequence for the same currency pair.
+
+MATCH (t1:Trade), (t2:Trade)
+WHERE t1.currency_pair = t2.currency_pair AND t1.timestamp < t2.timestamp
+MERGE (t1)-[:NEXT_TRADE]->(t2);
+✅ 3. Identify Outliers (Trades with Abnormal Price Changes Using Z-Score)
+This flags trades with a Z-score greater than 2 (potential outliers).
+
+MATCH (t:Trade)
+WITH avg(t.price) AS mean_price, stdev(t.price) AS std_dev
+MATCH (t:Trade)
+WHERE abs(t.price - mean_price) / std_dev > 2  // Outlier threshold
+SET t:Outlier
+RETURN t.trade_id, t.price, t.volume, 'Outlier' AS status;
+✅ 4. Find Trades with Unusually High Volumes
+For example, if the normal volume is under 1,000,000, we flag larger trades.
+
+MATCH (t:Trade)
+WHERE t.volume > 1000000  // Define expected max volume
+SET t:Unusual
+RETURN t.trade_id, t.volume, 'Unusual Volume' AS status;
+✅ 5. Retrieve & Visualize Trade Graph Data
+To view the trades and their relationships, use:
+
+MATCH (t:Trade)-[r:NEXT_TRADE]->(next:Trade)
+RETURN t.trade_id, t.currency_pair, t.price, t.volume, next.trade_id, r;
+To view only outliers:
+
+MATCH (t:Outlier)
+RETURN t.trade_id, t.price, t.volume, 'Outlier' AS status;
+
+
+
