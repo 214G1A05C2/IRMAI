@@ -1,0 +1,70 @@
+MERGE (t1:Trade {trade_id: "T001"})
+SET t1.symbol = "AAPL", t1.price = 150.25, t1.volume = 500, t1.timestamp = datetime("2024-02-20T09:30:00");
+
+MERGE (t2:Trade {trade_id: "T002"})
+SET t2.symbol = "AAPL", t2.price = 151.00, t2.volume = 600, t2.timestamp = datetime("2024-02-20T09:35:00");
+
+MERGE (t3:Trade {trade_id: "T003"})
+SET t3.symbol = "AAPL", t3.price = 153.50, t3.volume = 700, t3.timestamp = datetime("2024-02-20T09:50:00");  // This trade has a gap
+
+MERGE (t4:Trade {trade_id: "T004"})
+SET t4.symbol = "AAPL", t4.price = 152.75, t4.volume = 650, t4.timestamp = datetime("2024-02-20T10:00:00");
+
+MERGE (t5:Trade {trade_id: "T005"})
+SET t5.symbol = "MSFT", t5.price = 310.00, t5.volume = 800, t5.timestamp = datetime("2024-02-20T09:30:00");
+
+MERGE (t6:Trade {trade_id: "T006"})
+SET t6.symbol = "MSFT", t6.price = 312.50, t6.volume = 850, t6.timestamp = datetime("2024-02-20T09:40:00");
+
+MERGE (t7:Trade {trade_id: "T007"})
+SET t7.symbol = "MSFT", t7.price = 315.00, t7.volume = 900, t7.timestamp = datetime("2024-02-20T10:00:00");  // Another gap
+
+
+
+✅ 2. Create Relationships Between Trades
+(a) Link Trades in Time Sequence (NEXT_TRADE)
+Trades of the same stock symbol are linked based on timestamp order.
+
+MATCH (t1:Trade), (t2:Trade)
+WHERE t1.symbol = t2.symbol AND t1.timestamp < t2.timestamp
+MERGE (t1)-[:NEXT_TRADE]->(t2);
+✅ 3. Detect Trade Gaps (TRADE_GAP)
+A trade gap occurs if:
+
+The time difference between two trades exceeds 10 minutes.
+The price jump between trades is greater than 2%.
+
+MATCH (t1:Trade)-[:NEXT_TRADE]->(t2:Trade)
+WHERE duration.between(t1.timestamp, t2.timestamp).minutes > 10 
+   OR abs(t2.price - t1.price) / t1.price > 0.02
+MERGE (t1)-[:TRADE_GAP]->(t2)
+SET t1:Gap, t2:Gap;
+✅ 4. Compare Against Expected Trading Patterns
+(a) Identify Trades with Unusual Volume (UNUSUAL_VOLUME)
+Trades with volume greater than 750 are flagged.
+
+MATCH (t:Trade)
+WHERE t.volume > 750
+SET t:UnusualVolume
+RETURN t.trade_id, t.volume, 'Unusual Volume' AS status;
+(b) Identify Trades with Large Price Swings (UNUSUAL_PRICE)
+Trades where price moves more than 3% from the previous trade.
+
+MATCH (t1:Trade)-[:NEXT_TRADE]->(t2:Trade)
+WHERE abs(t2.price - t1.price) / t1.price > 0.03
+SET t2:UnusualPrice
+RETURN t2.trade_id, t2.price, 'Unusual Price Swing' AS status;
+✅ 5. Retrieve and Visualize the Trade Graph
+(a) View All Trades and Relationships
+
+MATCH (t1:Trade)-[r]->(t2:Trade)
+RETURN t1.trade_id, type(r), t2.trade_id;
+(b) View Only Trades with Gaps
+MATCH (t1:Gap)-[r:TRADE_GAP]->(t2:Gap)
+RETURN t1.trade_id, t1.price, t1.timestamp, type(r), t2.trade_id, t2.price, t2.timestamp;
+(c) Find Connected Trade Paths
+To explore trade paths within 3 steps:
+
+MATCH path = (t:Trade)-[*1..3]-(other:Trade)
+WHERE t.trade_id = "T001"
+RETURN path;
