@@ -1,0 +1,103 @@
+tep: Create Nodes and Relationships in Neo4j
+➤ Create Sample Transactions
+CREATE (:Transaction {id: "T001", amount: 1000, status: "Completed"}),
+       (:Transaction {id: "T002", amount: 5000, status: "Pending"}),
+       (:Transaction {id: "T003", amount: 15000, status: "Failed"});
+✅ Creates 3 transactions with different statuses.
+
+➤ Create Failure Modes
+
+CREATE (:FailureMode {name: "Unauthorized Transaction"}),
+       (:FailureMode {name: "Duplicate Transaction"}),
+       (:FailureMode {name: "Transaction Timeout"});
+✅ Defines possible transaction failures.
+
+➤ Create Causes of Failures
+
+CREATE (:Cause {name: "Hacked Account"}),
+       (:Cause {name: "System Glitch"}),
+       (:Cause {name: "Network Error"});
+✅ Identifies why failures happen.
+
+➤ Create Effects of Failures
+CREATE (:Effect {name: "Financial Loss"}),
+       (:Effect {name: "Customer Dissatisfaction"}),
+       (:Effect {name: "Regulatory Fine"});
+✅ Defines what happens when failures occur.
+
+➤ Create Mitigation Actions
+CREATE (:Mitigation {name: "Fraud Detection System"}),
+       (:Mitigation {name: "Automatic Refund"}),
+       (:Mitigation {name: "Real-Time Transaction Monitoring"});
+✅ Defines how to prevent or fix failures.
+
+3️⃣ Step: Define Relationships
+➤ Link Transactions to Failure Modes
+MATCH (t:Transaction {id: "T001"}), (f:FailureMode {name: "Unauthorized Transaction"})
+CREATE (t)-[:HAS_FAILURE]->(f);
+
+MATCH (t:Transaction {id: "T002"}), (f:FailureMode {name: "Duplicate Transaction"})
+CREATE (t)-[:HAS_FAILURE]->(f);
+
+MATCH (t:Transaction {id: "T003"}), (f:FailureMode {name: "Transaction Timeout"})
+CREATE (t)-[:HAS_FAILURE]->(f);
+✅ Connects transactions to failures.
+
+➤ Link Failure Modes to Causes
+MATCH (f:FailureMode {name: "Unauthorized Transaction"}), (c:Cause {name: "Hacked Account"})
+CREATE (f)-[:CAUSED_BY]->(c);
+
+MATCH (f:FailureMode {name: "Duplicate Transaction"}), (c:Cause {name: "System Glitch"})
+CREATE (f)-[:CAUSED_BY]->(c);
+
+MATCH (f:FailureMode {name: "Transaction Timeout"}), (c:Cause {name: "Network Error"})
+CREATE (f)-[:CAUSED_BY]->(c);
+✅ Connects failures to their causes.
+
+➤ Link Failure Modes to Effects
+MATCH (f:FailureMode {name: "Unauthorized Transaction"}), (e:Effect {name: "Financial Loss"})
+CREATE (f)-[:LEADS_TO]->(e);
+
+MATCH (f:FailureMode {name: "Duplicate Transaction"}), (e:Effect {name: "Customer Dissatisfaction"})
+CREATE (f)-[:LEADS_TO]->(e);
+
+MATCH (f:FailureMode {name: "Transaction Timeout"}), (e:Effect {name: "Regulatory Fine"})
+CREATE (f)-[:LEADS_TO]->(e);
+✅ Shows the impact of each failure.
+
+➤ Link Failure Modes to Mitigations
+MATCH (f:FailureMode {name: "Unauthorized Transaction"}), (m:Mitigation {name: "Fraud Detection System"})
+CREATE (f)-[:MITIGATED_BY]->(m);
+
+MATCH (f:FailureMode {name: "Duplicate Transaction"}), (m:Mitigation {name: "Automatic Refund"})
+CREATE (f)-[:MITIGATED_BY]->(m);
+
+MATCH (f:FailureMode {name: "Transaction Timeout"}), (m:Mitigation {name: "Real-Time Transaction Monitoring"})
+CREATE (f)-[:MITIGATED_BY]->(m);
+✅ Defines actions to reduce failures.
+
+4️⃣ Step: Visualizing the Financial FMEA Graph
+1️⃣ View the Full FMEA Graph
+MATCH (n)-[r]->(m) RETURN n, r, m;
+✅ Neo4j Output: Displays the full FMEA model with transactions, failures, causes, effects, and mitigations.
+
+2️⃣ Identify High-Risk Transactions
+
+MATCH (t:Transaction)-[:HAS_FAILURE]->(f:FailureMode)
+RETURN t.id AS TransactionID, f.name AS FailureMode;
+✅ Output: Lists all transactions that experienced failures.
+
+3️⃣ Find the Most Severe Failures
+
+MATCH (f:FailureMode)-[:LEADS_TO]->(e:Effect)
+RETURN f.name AS FailureMode, COUNT(e) AS Severity
+ORDER BY Severity DESC;
+✅ Output: Ranks failure modes by their impact.
+
+4️⃣ Identify Transactions Without Mitigation Actions
+
+MATCH (t:Transaction)-[:HAS_FAILURE]->(f:FailureMode)
+WHERE NOT (f)-[:MITIGATED_BY]->(:Mitigation)
+RETURN t.id AS TransactionID, f.name AS FailureMode;
+✅ Output: Finds transactions that lack risk mitigation strategies.
+
